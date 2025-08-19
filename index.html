@@ -1,0 +1,691 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>سامانه جامع آزمون سراسری</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Vazir:wght@400;700&family=Roboto:wght@400;700&display=swap');
+
+    body {
+      font-family: 'Vazir', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-image: url('https://biaupload.com/do.php?imgf=org-f4cdde55a3a31.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      direction: rtl;
+      position: relative;
+    }
+    .container-wrapper {
+      display: flex;
+      align-items: stretch;
+      flex-direction: row-reverse;
+      border: 2px solid #333;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+    .container {
+      width: 400px;
+      padding: 20px;
+      background-color: #ffffff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      transition: all 0.3s ease;
+      min-height: 420px;
+      border-right: 2px solid #333;
+      margin-right: -2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .extra-container {
+      width: 250px;
+      min-height: 420px;
+      background-color: #10375d;
+      background-image: url('https://biaupload.com/do.php?imgf=org-e4f5e5272e311.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      filter: brightness(1.2);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+    }
+    .extra-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(16, 55, 93, 0.3);
+      z-index: 1;
+    }
+    .extra-container > * {
+      position: relative;
+      z-index: 2;
+    }
+    .logo {
+      width: 125px;
+      height: auto;
+      margin-bottom: 10px;
+    }
+    .header {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+      background-color: rgba(0, 0, 0, 0.2);
+      padding: 5px 10px;
+      border-radius: 5px;
+    }
+    .subtitle {
+      font-size: 22px;
+      font-weight: 700;
+      color: #34495e;
+      margin-bottom: 30px;
+    }
+    .login {
+      font-size: 14px;
+      line-height: 1.5;
+      color: #7f8c8d;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+    }
+    .login input {
+      width: 85%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #bdc3c7;
+      border-radius: 6px;
+      font-family: 'Vazir', sans-serif;
+      font-size: 14px;
+      transition: border-color 0.3s ease;
+    }
+    .login input:focus {
+      border-color: #3498db;
+      outline: none;
+    }
+    .login button {
+      padding: 10px 20px;
+      background-color: #3498db;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Vazir', sans-serif;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+    }
+    .login button:hover {
+      background-color: #2980b9;
+    }
+    .captcha-container {
+      margin: 8px auto;
+      font-size: 14px;
+      text-align: center;
+      width: 85%;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 10px;
+      background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      direction: ltr;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .captcha-image {
+      width: 130px;
+      height: 45px;
+      background: linear-gradient(90deg, #e3eaf0 0%, #ffffff 100%);
+      border: 1px solid #d1dbe5;
+      border-radius: 6px;
+      margin: 0 12px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Roboto', sans-serif;
+      font-size: 22px;
+      color: #2c3e50;
+      font-weight: 700;
+      letter-spacing: 2px;
+      user-select: none;
+      direction: ltr;
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+      white-space: nowrap;
+    }
+    .captcha-options {
+      display: flex;
+      justify-content: flex-start;
+      gap: 10px;
+      direction: ltr;
+      flex-grow: 1;
+    }
+    .captcha-option {
+      padding: 10px 14px;
+      background-color: #ffffff;
+      border: 1px solid #d1dbe5;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Roboto', sans-serif;
+      font-size: 15px;
+      color: #34495e;
+      transition: all 0.3s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    .captcha-option:hover {
+      background-color: #f8f9fa;
+      transform: translateY(-1px);
+    }
+    .captcha-option.selected {
+      background-color: #3498db;
+      color: #ffffff;
+      border-color: #3498db;
+      box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+    }
+    .refresh-btn {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-left: 12px;
+    }
+    .refresh-btn:hover {
+      background: linear-gradient(135deg, #5a6268 0%, #4a4e53 100%);
+      transform: rotate(90deg);
+    }
+    .content {
+      font-size: 18px;
+      line-height: 1.8;
+      text-align: center;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #2c3e50;
+      width: 100%;
+      height: calc(100% - 40px);
+    }
+    .content p {
+      margin: 15px 0;
+      font-weight: 400;
+    }
+    .content a {
+      color: #e74c3c;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 20px;
+    }
+    .content a:hover {
+      text-decoration: underline;
+    }
+    .hidden {
+      display: none;
+    }
+    #error {
+      font-family: 'Vazir', sans-serif;
+      font-size: 16px;
+      color: #e74c3c;
+      font-weight: 400;
+      padding: 8px;
+      background-color: #ffebee;
+      border-radius: 4px;
+      margin-top: 10px;
+      text-align: right;
+    }
+    .logout-box {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      display: flex;
+      align-items: center;
+      padding: 6px 8px;
+      background-color: #ffffff;
+      border: 1px solid #dc3545;
+      border-radius: 4px;
+      cursor: pointer;
+      width: auto;
+      height: auto;
+    }
+    .logout-box .logout-text {
+      font-family: 'Vazir', sans-serif;
+      font-size: 16px;
+      color: #dc3545;
+      margin-left: 8px;
+    }
+    .logout-box svg {
+      width: 16px;
+      height: 16px;
+    }
+    .logout-box svg polyline,
+    .logout-box svg line,
+    .logout-box svg path {
+      fill: none;
+      stroke: #dc3545;
+      stroke-width: 1.5;
+    }
+    .logout-box:hover {
+      background-color: #ff3336;
+    }
+    .logout-box:hover .logout-text {
+      color: #ffffff;
+    }
+    .logout-box:hover svg polyline,
+    .logout-box:hover svg line,
+    .logout-box:hover svg path {
+      stroke: #ffffff;
+    }
+    .top-right-image {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      width: 70px;
+      height: auto;
+      border-radius: 8px;
+    }
+    .container-wrapper.ninety-percent {
+      width: 90vw;
+      height: 90vh;
+      border: 2px solid #333;
+      border-radius: 8px;
+      margin: 5vh auto;
+      position: relative;
+    }
+    @media (max-width: 600px) {
+      .container-wrapper.ninety-percent {
+        width: 95vw;
+        height: 95vh;
+        margin: 2.5vh auto;
+      }
+    }
+    .container-wrapper.ninety-percent .container {
+      width: 100%;
+      height: 100%;
+      border: none;
+      margin: 0;
+      padding: 20px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .container-wrapper.ninety-percent .content {
+      height: calc(100% - 40px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .content .top-right-image {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+    .content .logout-box {
+      top: 20px;
+      left: 20px;
+    }
+    .content .profile-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 600px;
+      margin-top: 80px;
+    }
+    .content .profile-columns {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 600px;
+    }
+    .content .profile-column {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin: 10px 0;
+    }
+    .content .profile-item {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      margin-bottom: 90px;
+    }
+    .content .profile-item span.bold {
+      font-weight: bold;
+      color: #2c3e50;
+      margin-right: 5px;
+      font-size: 22px;
+    }
+    .content .profile-item span.colon {
+      margin: 0 5px;
+      font-size: 22px;
+    }
+    .content .profile-item span.value {
+      color: #34495e;
+      font-weight: 500;
+      font-size: 22px;
+    }
+    .content .top-center-image {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: auto;
+      z-index: 1;
+    }
+    .content .report-button {
+      padding: 10px 20px;
+      background-color: #3498db;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Vazir', sans-serif;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+      margin-top: 20px;
+    }
+    .content .report-button:hover {
+      background-color: #2980b9;
+    }
+    .third-page-wrapper {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #fff;
+      background-image: url('https://uploadkon.ir/uploads/3a6919_25sanjesh.jpg');
+      background-size: contain;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: 1000;
+      justify-content: center;
+      align-items: flex-end;
+      padding-bottom: 20px;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    .third-page-wrapper.active {
+      display: flex;
+    }
+    .third-page-wrapper button {
+      padding: 12px 24px;
+      background-color: #3498db;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Vazir', sans-serif;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+      position: relative;
+      z-index: 1001;
+    }
+    .third-page-wrapper button:hover {
+      background-color: #2980b9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-wrapper">
+    <div class="container">
+      <div class="login" id="loginForm">
+        <div class="subtitle" style="margin-bottom: 30px;">ورود به سامانه</div>
+        <input type="text" id="username" placeholder="کد ملی/شناسه یکتا" required>
+        <input type="password" id="password" placeholder="رمز عبور" required>
+        <div class="captcha-container" id="captchaContainer">
+          <div class="captcha-image" id="captchaText"></div>
+          <div class="captcha-options" id="captchaOptions"></div>
+          <button class="refresh-btn" onclick="refreshCaptcha()">⟳</button>
+        </div>
+        <br>
+        <button onclick="checkLogin()">ورود</button>
+        <p id="error" style="display: none;"></p>
+      </div>
+      <div class="content hidden" id="reportCard">
+        <img src="https://biaupload.com/do.php?imgf=org-e81e553a19dd1.png" alt="لوگو بالای صفحه" class="top-center-image" onerror="handleImageError(this);">
+        <div class="logout-box" onclick="logout()">
+          <svg viewBox="0 0 24 24">
+            <polyline points="16 17 21 12 16 7" stroke-width="1.5" fill="none"></polyline>
+            <line x1="9" y1="12" x2="15" y2="12" stroke-width="1.5" fill="none"></line>
+            <path d="M9 7 Q8.5 12 9 17" stroke-width="1.5" fill="none"></path>
+          </svg>
+          <span class="logout-text">خروج</span>
+        </div>
+        <img src="https://biaupload.com/do.php?imgf=org-9e416cf0c4411.png" alt="عکس گوشه" class="top-right-image" onerror="handleImageError(this);">
+        <div class="profile-section">
+          <div class="profile-columns">
+            <div class="profile-column">
+              <div class="profile-item"><span class="bold">نام</span><span class="colon">:</span><span class="value">امیررضا</span></div>
+              <div class="profile-item"><span class="bold">شماره داوطلبی</span><span class="colon">:</span><span class="value">2051426163</span></div>
+            </div>
+            <div class="profile-column">
+              <div class="profile-item"><span class="bold">نام خانوادگی</span><span class="colon">:</span><span class="value">جبرئیلی جلودار</span></div>
+              <div class="profile-item"><span class="bold">رشته</span><span class="colon">:</span><span class="value">تجربی</span></div>
+            </div>
+          </div>
+        </div>
+        <button class="report-button" onclick="showThirdPage()">مشاهده کارنامه</button>
+      </div>
+    </div>
+    <div class="extra-container" id="extraContainer">
+      <img src="https://biaupload.com/do.php?imgf=org-ea2dea2fa8151.png" alt="لوگو" class="logo" onerror="handleImageError(this);">
+      <div class="header">سامانه جامع آزمون سراسری</div>
+    </div>
+  </div>
+  <div class="third-page-wrapper" id="thirdPageWrapper">
+    <button onclick="downloadPDF()">چاپ کارنامه</button>
+  </div>
+  <script>
+    // Removed unused XLSX-related code since no Excel file processing is needed
+    function handleImageError(img) {
+      img.style.display = 'none';
+      const error = document.getElementById('error');
+      if (!error.textContent.includes('تصاویر')) {
+        error.textContent += ' خطا: برخی تصاویر بارگذاری نشدند. ';
+        error.style.display = 'block';
+      }
+    }
+
+    function refreshCaptcha() {
+      setTimeout(() => {
+        const num1 = Math.floor(Math.random() * 10) + 1;
+        const num2 = Math.floor(Math.random() * 10) + 1;
+        const correctAnswer = num1 + num2;
+        const captchaText = document.getElementById('captchaText');
+        captchaText.textContent = `${num1} + ${num2}`;
+        document.getElementById('captchaContainer').dataset.answer = correctAnswer;
+
+        const options = generateOptions(correctAnswer);
+        const optionsDiv = document.getElementById('captchaOptions');
+        optionsDiv.innerHTML = '';
+        options.forEach(option => {
+          const div = document.createElement('div');
+          div.className = 'captcha-option';
+          div.textContent = option;
+          div.onclick = () => selectOption(div, option);
+          optionsDiv.appendChild(div);
+        });
+      }, 300);
+    }
+
+    function generateOptions(correctAnswer) {
+      const options = [correctAnswer];
+      while (options.length < 4) {
+        const wrongOption = correctAnswer + (Math.floor(Math.random() * 5) - 2);
+        if (wrongOption > 0 && !options.includes(wrongOption)) options.push(wrongOption);
+      }
+      return options.sort((a, b) => a - b);
+    }
+
+    function selectOption(element, option) {
+      document.querySelectorAll('.captcha-option').forEach(el => el.classList.remove('selected'));
+      element.classList.add('selected');
+      document.getElementById('captchaContainer').dataset.selected = option;
+    }
+
+    function checkLogin() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const selectedOption = document.getElementById('captchaContainer').dataset.selected;
+      const correctCaptcha = document.getElementById('captchaContainer').dataset.answer;
+      const error = document.getElementById('error');
+      const loginForm = document.getElementById('loginForm');
+      const reportCard = document.getElementById('reportCard');
+      const extraContainer = document.getElementById('extraContainer');
+      const containerWrapper = document.querySelector('.container-wrapper');
+
+      const correctUsername = "2051426163";
+      const correctPassword = "13855831Am";
+
+      if (!username || !password) {
+        error.textContent = "خطا: نام کاربری یا رمز عبور خالی است.";
+        error.style.display = 'block';
+        return;
+      }
+      if (!selectedOption) {
+        error.textContent = "خطا: لطفاً کپچا را انتخاب کنید.";
+        error.style.display = 'block';
+        return;
+      }
+      if (username === correctUsername && password === correctPassword && selectedOption === correctCaptcha) {
+        loginForm.classList.add('hidden');
+        reportCard.classList.remove('hidden');
+        extraContainer.classList.add('hidden');
+        containerWrapper.classList.add('ninety-percent');
+        error.style.display = 'none';
+      } else {
+        let errorMessage = "خطا: ";
+        if (username !== correctUsername) errorMessage += "کد ملی/شناسه یکتا نادرست است. ";
+        if (password !== correctPassword) errorMessage += "رمز عبور نادرست است. ";
+        if (selectedOption !== correctCaptcha) errorMessage += "کپچا نادرست است.";
+        error.textContent = errorMessage.trim();
+        error.style.display = 'block';
+        refreshCaptcha();
+      }
+    }
+
+    function logout() {
+      const loginForm = document.getElementById('loginForm');
+      const reportCard = document.getElementById('reportCard');
+      const extraContainer = document.getElementById('extraContainer');
+      const containerWrapper = document.querySelector('.container-wrapper');
+      loginForm.classList.remove('hidden');
+      reportCard.classList.add('hidden');
+      extraContainer.classList.remove('hidden');
+      containerWrapper.classList.remove('ninety-percent');
+      document.getElementById('username').value = '';
+      document.getElementById('password').value = '';
+      document.getElementById('captchaContainer').dataset.selected = '';
+      refreshCaptcha();
+    }
+
+    function showThirdPage() {
+      const reportCard = document.getElementById('reportCard');
+      const thirdPageWrapper = document.getElementById('thirdPageWrapper');
+      reportCard.classList.add('hidden');
+      thirdPageWrapper.classList.add('active');
+    }
+
+    function downloadPDF() {
+      const error = document.getElementById('error');
+      const pdfUrl = 'https://uploadkon.ir/uploads/11f010_25Sanjesh.pdf';
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = 'Sanjesh.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      // Show the report card again after initiating download
+      const reportCard = document.getElementById('reportCard');
+      const thirdPageWrapper = document.getElementById('thirdPageWrapper');
+      thirdPageWrapper.classList.remove('active');
+      reportCard.classList.remove('hidden');
+    }
+
+    window.onload = function() {
+      refreshCaptcha();
+      const inputs = document.querySelectorAll('#username, #password');
+      inputs.forEach(input => {
+        input.addEventListener('input', () => {
+          const error = document.getElementById('error');
+          error.style.display = 'none';
+        });
+      });
+    };
+  </script>
+</body>
+</html>
